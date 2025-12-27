@@ -167,6 +167,8 @@ export default function CRM() {
 
   // Track if update came from Firebase to prevent re-sync
   const isFirebaseUpdate = useRef(false);
+  const hasFirebaseLoaded = useRef(false); // Track if we've received initial Firebase data
+  const deletedIds = useRef(new Set()); // Track deleted IDs to prevent re-syncing
   
   // Keep leadsRef in sync with leads state and sync changes to Firebase
   const prevLeadsRef = useRef([]);
@@ -175,9 +177,27 @@ export default function CRM() {
     localStorage.setItem('leads', JSON.stringify(leads)); 
     updateMarkers();
     
-    // Only sync to Firebase if this update didn't come from Firebase
-    if (firebaseConnected && leads.length > 0 && !isFirebaseUpdate.current) {
+    // Only sync to Firebase if:
+    // 1. Firebase is connected
+    // 2. Firebase has already loaded initial data (prevents localStorage overwriting Firebase)
+    // 3. This update didn't come from Firebase itself
+    if (firebaseConnected && hasFirebaseLoaded.current && leads.length > 0 && !isFirebaseUpdate.current) {
       leads.forEach(lead => {
+        // Skip if this lead was recently deleted (don't re-add it)
+        if (deletedIds.current.has(lead.id)) return;
+        
+        // Only sync to Firebase if the lead has been interacted with:
+        // - Marked as a lead (isLead = true)
+        // - Has notes
+        // - Status changed from NEW
+        // - Has call history
+        const hasBeenInteractedWith = lead.isLead || 
+          (lead.notes && lead.notes.trim() !== '') || 
+          lead.status !== 'NEW' || 
+          (lead.callHistory && lead.callHistory.length > 0);
+        
+        if (!hasBeenInteractedWith) return;
+        
         const prevLead = prevLeadsRef.current.find(l => l.id === lead.id);
         // If lead is new or updated, sync to Firebase
         if (!prevLead || lead.lastUpdated !== prevLead.lastUpdated) {
@@ -224,10 +244,28 @@ export default function CRM() {
   useEffect(() => {
     if (!firebaseConnected) return;
     const unsubscribe = subscribeToLeads((firebaseLeads) => {
+      // Mark that we've received Firebase data
+      hasFirebaseLoaded.current = true;
       // Mark this as a Firebase update to prevent re-syncing
       isFirebaseUpdate.current = true;
+      // Filter out any leads that were recently deleted locally
+      const filteredLeads = firebaseLeads.filter(lead => !deletedIds.current.has(lead.id));
       // Firebase is the source of truth - use Firebase leads directly
-      setLeads(firebaseLeads);
+      // Also merge with local search results that haven't been interacted with yet
+      setLeads(prev => {
+        // Get local search results that haven't been saved to Firebase yet
+        const localOnlyLeads = prev.filter(lead => {
+          const inFirebase = filteredLeads.some(fl => fl.id === lead.id);
+          const hasBeenInteractedWith = lead.isLead || 
+            (lead.notes && lead.notes.trim() !== '') || 
+            lead.status !== 'NEW' || 
+            (lead.callHistory && lead.callHistory.length > 0);
+          // Keep local leads that are not in Firebase AND haven't been interacted with
+          return !inFirebase && !hasBeenInteractedWith;
+        });
+        // Combine Firebase leads with local-only search results
+        return [...filteredLeads, ...localOnlyLeads];
+      });
     });
     return unsubscribe;
   }, [firebaseConnected]);
@@ -454,6 +492,7 @@ export default function CRM() {
         lastUpdated: Date.now(),
         rating: p.rating || null, userRatingsTotal: p.user_ratings_total || 0,
         businessType: businessType, // Store the searched business type
+        isLead: false,           // Must be marked as lead to show on sheet
       }));
       
       // Fetch details for each lead (phone/website)
@@ -509,6 +548,7 @@ export default function CRM() {
         lastUpdated: Date.now(),
         rating: p.rating || null, userRatingsTotal: p.user_ratings_total || 0,
         businessType: businessType,
+        isLead: false,           // Must be marked as lead to show on sheet
       }));
       
       const service = new window.google.maps.places.PlacesService(mapInstance.current);
@@ -524,10 +564,11 @@ export default function CRM() {
     // This effect runs when pagination changes, but the actual callback happens in loadMore
   }, [pagination, userName]);
 
-  // Sync lead to Google Sheets
+  // Sync lead to Google Sheets (only if marked as lead)
   async function syncToSheet(lead, action = 'update') {
     const sheetsUrl = localStorage.getItem('sheetsUrl');
     if (!sheetsUrl) return; // No sheets URL configured
+    if (!lead.isLead) return; // Only sync leads marked for sheet
     
     try {
       // Find the business type label
@@ -560,9 +601,26 @@ export default function CRM() {
   function updateLead(id, updates) {
     setLeads(prev => {
       const updated = prev.map(l => l.id === id ? { ...l, ...updates, lastUpdated: Date.now() } : l);
-      // Sync to sheet if status changed to non-NEW
+      // Sync to sheet if marked as lead
       const lead = updated.find(l => l.id === id);
-      if (lead && lead.status !== 'NEW') {
+      if (lead && lead.isLead) {
+        syncToSheet(lead);
+      }
+      return updated;
+    });
+  }
+
+  // Mark/unmark a lead for the sheet
+  function toggleMarkAsLead(id) {
+    setLeads(prev => {
+      const updated = prev.map(l => l.id === id ? { ...l, isLead: !l.isLead, lastUpdated: Date.now() } : l);
+      const lead = updated.find(l => l.id === id);
+      // Sync to Firebase
+      if (lead && firebaseConnected) {
+        updateFirebaseLead(lead.id, lead);
+      }
+      // Sync to sheet if now marked as lead
+      if (lead && lead.isLead) {
         syncToSheet(lead);
       }
       return updated;
@@ -574,7 +632,8 @@ export default function CRM() {
     setLeads(prev => {
       const updated = prev.map(l => l.id === id ? { ...l, status: newStatus, lastUpdated: Date.now() } : l);
       const lead = updated.find(l => l.id === id);
-      if (lead && newStatus !== 'NEW') {
+      // Sync to sheet if marked as lead
+      if (lead && lead.isLead) {
         syncToSheet(lead);
       }
       // Sync to Firebase
@@ -612,16 +671,41 @@ export default function CRM() {
   }
 
   function removeLead(id) { 
+    // Add to deleted IDs set to prevent re-syncing
+    deletedIds.current.add(id);
+    
+    // Remove from local state
     setLeads(prev => prev.filter(l => l.id !== id)); 
     if (selectedLead?.id === id) setSelectedLead(null);
+    
     // Sync delete to Firebase
     if (firebaseConnected) {
-      deleteLead(id).catch(err => console.error('Firebase delete error:', err));
+      deleteLead(id)
+        .then(() => {
+          console.log('Lead deleted from Firebase:', id);
+          // Clear from deleted set after a delay to allow for sync cycles
+          setTimeout(() => deletedIds.current.delete(id), 5000);
+        })
+        .catch(err => {
+          console.error('Firebase delete error:', err);
+          // Remove from deleted set on error so it can be retried
+          deletedIds.current.delete(id);
+        });
     }
   }
 
   function clearAllLeads() {
     if (window.confirm('Are you sure you want to delete ALL leads? This cannot be undone.')) {
+      // Get current leads and delete each from Firebase
+      const currentLeads = [...leads];
+      currentLeads.forEach(lead => {
+        deletedIds.current.add(lead.id);
+        if (firebaseConnected) {
+          deleteLead(lead.id)
+            .then(() => setTimeout(() => deletedIds.current.delete(lead.id), 5000))
+            .catch(err => console.error('Firebase delete error:', err));
+        }
+      });
       setLeads([]);
       setSelectedLead(null);
     }
@@ -698,6 +782,24 @@ export default function CRM() {
     }
   }
 
+  function bulkMarkAsLead(markAs = true) {
+    selectedLeadIds.forEach(id => {
+      setLeads(prev => {
+        const updated = prev.map(l => l.id === id ? { ...l, isLead: markAs, lastUpdated: Date.now() } : l);
+        const lead = updated.find(l => l.id === id);
+        if (lead && firebaseConnected) {
+          updateFirebaseLead(lead.id, lead);
+        }
+        if (lead && lead.isLead) {
+          syncToSheet(lead);
+        }
+        return updated;
+      });
+    });
+    setSelectedLeadIds(new Set());
+    setBulkMode(false);
+  }
+
   // Copy to clipboard helper
   function copyToClipboard(text, label) {
     navigator.clipboard.writeText(text).then(() => {
@@ -739,7 +841,7 @@ export default function CRM() {
   });
 
   // Get only marked leads (not NEW)
-  const markedLeads = visibleLeads.filter(l => l.status !== 'NEW');
+  const markedLeads = visibleLeads.filter(l => l.isLead);
 
   // Export marked leads to downloadable file
   function exportLeads() {
@@ -817,6 +919,12 @@ export default function CRM() {
             if (canEditLead(selectedLead)) {
               updateLeadStatus(selectedLead.id, status);
               setSelectedLead(prev => ({ ...prev, status }));
+            }
+          }}
+          onToggleLead={() => {
+            if (canEditLead(selectedLead)) {
+              toggleMarkAsLead(selectedLead.id);
+              setSelectedLead(prev => ({ ...prev, isLead: !prev.isLead }));
             }
           }}
           onLogCall={(outcome, notes) => {
@@ -1089,6 +1197,7 @@ export default function CRM() {
                   </div>
                   {bulkMode && selectedLeadIds.size > 0 && (
                     <div className="bulk-right">
+                      <button className="bulk-lead-btn" onClick={() => bulkMarkAsLead(true)}>📋 Add to Sheet</button>
                       <select 
                         className="bulk-status-select"
                         onChange={e => { if (e.target.value) bulkUpdateStatus(e.target.value); }}
@@ -1103,7 +1212,7 @@ export default function CRM() {
                 </div>
                 
                 <div className="list-header">
-                  <span className="lead-count">{filtered.length} of {leads.length} leads {markedLeads.length > 0 && `(${markedLeads.length} marked)`}</span>
+                  <span className="lead-count">{filtered.length} of {leads.length} leads {markedLeads.length > 0 && `(${markedLeads.length} on sheet)`}</span>
                   <div className="list-actions">
                     {markedLeads.length > 0 && <button className="export-btn" onClick={exportLeads}>📥 Export</button>}
                     {leads.length > 0 && <button className="clear-all-btn" onClick={clearAllLeads}>Clear All</button>}
@@ -1162,6 +1271,7 @@ export default function CRM() {
                           </div>
                           
                           <div className="item-tags">
+                            {lead.isLead && <span className="tag lead-tag">📋 Lead</span>}
                             {lead.status !== 'NEW' && <span className="tag status-tag" style={{ background: statusObj.color + '33', color: statusObj.color }}>{statusObj.label}</span>}
                             {lead.userRatingsTotal > 0 && <span className="tag ok">⭐ {lead.userRatingsTotal}</span>}
                             {!lead.phone && <span className="tag bad">No 📞</span>}
@@ -1183,6 +1293,14 @@ export default function CRM() {
                           </button>
                           {isMenuOpen && (
                             <div className="action-dropdown" onClick={e => e.stopPropagation()}>
+                              <button 
+                                className={`mark-lead-btn ${lead.isLead ? 'marked' : ''}`}
+                                onClick={() => {
+                                  toggleMarkAsLead(lead.id);
+                                }}
+                              >
+                                {lead.isLead ? '✅ On Sheet' : '📋 Add to Sheet'}
+                              </button>
                               <div className="dropdown-header">Mark as:</div>
                               <div className="dropdown-statuses">
                                 {LEAD_STATUSES.filter(s => s.value !== 'NEW').map(s => (

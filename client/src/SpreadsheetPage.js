@@ -78,9 +78,10 @@ const SpreadsheetPage = () => {
   // Get unique team members
   const teamMembers = [...new Set(leads.map(l => l.addedBy).filter(Boolean))];
 
-  // Filter and sort leads
+  // Filter and sort leads (only show leads marked as isLead)
   const filteredLeads = React.useMemo(() => {
-    let result = [...leads];
+    // Only include leads that are marked as leads
+    let result = leads.filter(l => l.isLead);
 
     // Search
     if (filters.search) {

@@ -34,6 +34,7 @@ export default function LeadDetailModal({
   onClose, 
   onUpdate, 
   onStatusChange,
+  onToggleLead,
   onLogCall,
   onDelete,
   onZoom,
@@ -104,7 +105,17 @@ export default function LeadDetailModal({
             <h2>{lead.name}</h2>
             <p className="modal-address">{lead.address}</p>
           </div>
-          <button className="close-btn" onClick={onClose}>×</button>
+          <div className="modal-header-actions">
+            {onToggleLead && canEdit && (
+              <button 
+                className={`sheet-toggle-btn ${lead.isLead ? 'on-sheet' : ''}`}
+                onClick={onToggleLead}
+              >
+                {lead.isLead ? '✅ On Sheet' : '📋 Add to Sheet'}
+              </button>
+            )}
+            <button className="close-btn" onClick={onClose}>×</button>
+          </div>
         </div>
 
         {/* Status Bar */}
