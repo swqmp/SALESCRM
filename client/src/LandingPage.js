@@ -1,12 +1,13 @@
 import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import './LandingPage.css';
 
 export default function LandingPage() {
+  const navigate = useNavigate();
+
   useEffect(() => {
-    // Load external CSS
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = '/styles.css';
-    document.head.appendChild(link);
+    // Update document title
+    document.title = 'NJ Developments | Custom Digital Solutions';
 
     // Load Font Awesome
     const faLink = document.createElement('link');
@@ -14,34 +15,91 @@ export default function LandingPage() {
     faLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css';
     document.head.appendChild(faLink);
 
-    // Load Google Fonts
-    const fontLink = document.createElement('link');
-    fontLink.rel = 'stylesheet';
-    fontLink.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap';
-    document.head.appendChild(fontLink);
+    // Mobile navigation toggle
+    const hamburger = document.querySelector('.hamburger');
+    const navLinks = document.querySelector('.nav-links');
+    
+    const handleHamburgerClick = () => {
+      hamburger?.classList.toggle('active');
+      navLinks?.classList.toggle('active');
+    };
+    
+    hamburger?.addEventListener('click', handleHamburgerClick);
 
-    // Load external JS after component mounts
-    const script = document.createElement('script');
-    script.src = '/script.js';
-    script.async = true;
-    document.body.appendChild(script);
+    // Close mobile menu when clicking a link
+    const navLinksList = document.querySelectorAll('.nav-links a');
+    navLinksList.forEach(link => {
+      link.addEventListener('click', () => {
+        hamburger?.classList.remove('active');
+        navLinks?.classList.remove('active');
+      });
+    });
 
-    // Update document title
-    document.title = 'NJ Developments | Custom Digital Solutions';
-
-    return () => {
-      // Cleanup on unmount
-      document.head.removeChild(link);
-      document.head.removeChild(faLink);
-      document.head.removeChild(fontLink);
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
+    // Navbar scroll effect
+    const navbar = document.querySelector('.navbar');
+    const handleScroll = () => {
+      if (window.scrollY > 50) {
+        navbar?.classList.add('scrolled');
+      } else {
+        navbar?.classList.remove('scrolled');
+      }
+      
+      // Scroll progress
+      const scrollProgress = document.querySelector('.scroll-progress');
+      if (scrollProgress) {
+        const scrollTop = window.scrollY;
+        const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+        const scrollPercent = (scrollTop / docHeight) * 100;
+        scrollProgress.style.width = scrollPercent + '%';
       }
     };
-  }, []);
+    
+    window.addEventListener('scroll', handleScroll);
+
+    // Hidden CRM access - click footer logo 5 times
+    const footerLogo = document.getElementById('footer-logo-secret');
+    let clickCount = 0;
+    let clickTimer = null;
+    
+    const handleLogoClick = (e) => {
+      e.preventDefault();
+      clickCount++;
+      
+      if (clickTimer) clearTimeout(clickTimer);
+      clickTimer = setTimeout(() => { clickCount = 0; }, 2000);
+      
+      if (clickCount >= 5) {
+        clickCount = 0;
+        navigate('/crm');
+      }
+    };
+    
+    footerLogo?.addEventListener('click', handleLogoClick);
+
+    // Form submission
+    const contactForm = document.getElementById('contactForm');
+    const handleFormSubmit = (e) => {
+      e.preventDefault();
+      alert('Thanks for reaching out! We\'ll get back to you within 24 hours.');
+      contactForm?.reset();
+    };
+    
+    contactForm?.addEventListener('submit', handleFormSubmit);
+
+    // Cleanup
+    return () => {
+      hamburger?.removeEventListener('click', handleHamburgerClick);
+      window.removeEventListener('scroll', handleScroll);
+      footerLogo?.removeEventListener('click', handleLogoClick);
+      contactForm?.removeEventListener('submit', handleFormSubmit);
+      if (document.head.contains(faLink)) {
+        document.head.removeChild(faLink);
+      }
+    };
+  }, [navigate]);
 
   return (
-    <>
+    <div className="landing-page">
       {/* Scroll Progress Bar */}
       <div className="scroll-progress"></div>
       
@@ -51,7 +109,7 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className="navbar">
         <div className="nav-container">
-          <a href="#" className="logo">
+          <a href="#home" className="logo">
             <span className="logo-nj">NJ</span>
             <span className="logo-text">Developments</span>
           </a>
@@ -74,40 +132,42 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section id="home" className="hero">
         <div className="hero-content">
-          <div className="hero-badge">Custom Digital Solutions</div>
-          <h1>We Build <span className="gradient-text">Digital Experiences</span> That Drive Growth</h1>
-          <p>From stunning websites to custom platforms, we transform your business with technology solutions that actually work.</p>
-          <div className="hero-buttons">
-            <a href="#contact" className="btn btn-primary">Start Your Project</a>
-            <a href="#services" className="btn btn-secondary">Our Services</a>
-          </div>
-          <div className="hero-stats">
-            <div className="stat">
-              <span className="stat-number">100%</span>
-              <span className="stat-label">Client Focused</span>
+          <div>
+            <div className="hero-badge">Custom Digital Solutions</div>
+            <h1>We Build <span className="gradient-text">Digital Experiences</span> That Drive Growth</h1>
+            <p>From stunning websites to custom platforms, we transform your business with technology solutions that actually work.</p>
+            <div className="hero-buttons">
+              <a href="#contact" className="btn btn-primary">Start Your Project</a>
+              <a href="#services" className="btn btn-secondary">Our Services</a>
             </div>
-            <div className="stat">
-              <span className="stat-number">24/7</span>
-              <span className="stat-label">Live Support</span>
+            <div className="hero-stats">
+              <div className="stat">
+                <span className="stat-number">100%</span>
+                <span className="stat-label">Client Focused</span>
+              </div>
+              <div className="stat">
+                <span className="stat-number">24/7</span>
+                <span className="stat-label">Live Support</span>
+              </div>
+              <div className="stat">
+                <span className="stat-number">Fast</span>
+                <span className="stat-label">Delivery</span>
+              </div>
             </div>
-            <div className="stat">
-              <span className="stat-number">Fast</span>
-              <span className="stat-label">Delivery</span>
+          </div>
+          <div className="hero-visual">
+            <div className="floating-card card-1">
+              <i className="fas fa-code"></i>
+              <span>Clean Code</span>
             </div>
-          </div>
-        </div>
-        <div className="hero-visual">
-          <div className="floating-card card-1">
-            <i className="fas fa-code"></i>
-            <span>Clean Code</span>
-          </div>
-          <div className="floating-card card-2">
-            <i className="fas fa-mobile-alt"></i>
-            <span>Mobile First</span>
-          </div>
-          <div className="floating-card card-3">
-            <i className="fas fa-rocket"></i>
-            <span>Fast & Secure</span>
+            <div className="floating-card card-2">
+              <i className="fas fa-mobile-alt"></i>
+              <span>Mobile First</span>
+            </div>
+            <div className="floating-card card-3">
+              <i className="fas fa-rocket"></i>
+              <span>Fast & Secure</span>
+            </div>
           </div>
         </div>
       </section>
@@ -122,9 +182,7 @@ export default function LandingPage() {
           </div>
           <div className="services-grid">
             <div className="service-card">
-              <div className="service-icon">
-                <i className="fas fa-globe"></i>
-              </div>
+              <div className="service-icon"><i className="fas fa-globe"></i></div>
               <h3>Website Development</h3>
               <p>Professional, mobile-first websites designed to convert visitors into customers. SEO optimized and lightning fast.</p>
               <ul className="service-features">
@@ -135,9 +193,7 @@ export default function LandingPage() {
             </div>
             <div className="service-card featured">
               <div className="featured-badge">Popular</div>
-              <div className="service-icon">
-                <i className="fas fa-shopping-cart"></i>
-              </div>
+              <div className="service-icon"><i className="fas fa-shopping-cart"></i></div>
               <h3>Online Ordering & POS</h3>
               <p>Seamless ordering systems with Toast, Square, or custom solutions. Integrated payment processing with Stripe.</p>
               <ul className="service-features">
@@ -147,9 +203,7 @@ export default function LandingPage() {
               </ul>
             </div>
             <div className="service-card">
-              <div className="service-icon">
-                <i className="fas fa-cogs"></i>
-              </div>
+              <div className="service-icon"><i className="fas fa-cogs"></i></div>
               <h3>Custom Platforms</h3>
               <p>Purpose-built systems that replace fragmented tools. Tournaments, memberships, scheduling, and more.</p>
               <ul className="service-features">
@@ -159,9 +213,7 @@ export default function LandingPage() {
               </ul>
             </div>
             <div className="service-card">
-              <div className="service-icon">
-                <i className="fas fa-search"></i>
-              </div>
+              <div className="service-icon"><i className="fas fa-search"></i></div>
               <h3>Google Business & SEO</h3>
               <p>Get found when customers search. Google Business optimization and local SEO to drive foot traffic.</p>
               <ul className="service-features">
@@ -171,9 +223,7 @@ export default function LandingPage() {
               </ul>
             </div>
             <div className="service-card">
-              <div className="service-icon">
-                <i className="fas fa-headset"></i>
-              </div>
+              <div className="service-icon"><i className="fas fa-headset"></i></div>
               <h3>Ongoing Support</h3>
               <p>We don't just build and leave. Live support, updates, and maintenance to keep everything running smoothly.</p>
               <ul className="service-features">
@@ -183,9 +233,7 @@ export default function LandingPage() {
               </ul>
             </div>
             <div className="service-card">
-              <div className="service-icon">
-                <i className="fas fa-chart-line"></i>
-              </div>
+              <div className="service-icon"><i className="fas fa-chart-line"></i></div>
               <h3>Growth Strategy</h3>
               <p>Data-driven insights to help you understand what's working and where to focus for maximum ROI.</p>
               <ul className="service-features">
@@ -306,7 +354,7 @@ export default function LandingPage() {
               <div className="portfolio-info">
                 <span className="portfolio-tag">Entertainment Venue</span>
                 <h3>Golf Cove</h3>
-                <p>Premium indoor golf & multisport simulator destination in North Haven, CT. Full website with booking integration, memberships, and event management.</p>
+                <p>Premium indoor golf & multisport simulator destination in North Haven, CT.</p>
                 <div className="portfolio-tech">
                   <span>Website</span>
                   <span>Booking System</span>
@@ -326,7 +374,7 @@ export default function LandingPage() {
               <div className="portfolio-info">
                 <span className="portfolio-tag">Non-Profit / Education</span>
                 <h3>Ice Cream Productions</h3>
-                <p>Alternative learning program helping at-risk youth succeed. Features donation system, program info, merchandise shop, and volunteer signup.</p>
+                <p>Alternative learning program helping at-risk youth succeed.</p>
                 <div className="portfolio-tech">
                   <span>Website</span>
                   <span>Donations</span>
@@ -346,7 +394,7 @@ export default function LandingPage() {
               <div className="portfolio-info">
                 <span className="portfolio-tag">Restaurant & Bar</span>
                 <h3>Odie's Place</h3>
-                <p>Hamden's favorite neighborhood bar serving New Haven style pizza. Toast POS integration for online ordering, pickup & delivery.</p>
+                <p>Hamden's favorite neighborhood bar serving New Haven style pizza.</p>
                 <div className="portfolio-tech">
                   <span>Website</span>
                   <span>Toast Integration</span>
@@ -366,7 +414,7 @@ export default function LandingPage() {
               <div className="portfolio-info">
                 <span className="portfolio-tag">Web Application</span>
                 <h3>Chip Simulator</h3>
-                <p>Digital chip tracker for live poker & blackjack games. Track bets, pots, blinds, and stats while playing with real cards.</p>
+                <p>Digital chip tracker for live poker & blackjack games.</p>
                 <div className="portfolio-tech">
                   <span>Web App</span>
                   <span>Texas Hold'em</span>
@@ -400,27 +448,21 @@ export default function LandingPage() {
           <div className="contact-grid">
             <div className="contact-info">
               <div className="contact-card">
-                <div className="contact-icon">
-                  <i className="fas fa-envelope"></i>
-                </div>
+                <div className="contact-icon"><i className="fas fa-envelope"></i></div>
                 <div className="contact-details">
                   <h4>Email Us</h4>
                   <a href="mailto:javflores.ct@gmail.com">javflores.ct@gmail.com</a>
                 </div>
               </div>
               <div className="contact-card">
-                <div className="contact-icon">
-                  <i className="fas fa-phone"></i>
-                </div>
+                <div className="contact-icon"><i className="fas fa-phone"></i></div>
                 <div className="contact-details">
                   <h4>Call Us</h4>
                   <a href="tel:860-987-7606">860-987-7606</a>
                 </div>
               </div>
               <div className="contact-card">
-                <div className="contact-icon">
-                  <i className="fas fa-map-marker-alt"></i>
-                </div>
+                <div className="contact-icon"><i className="fas fa-map-marker-alt"></i></div>
                 <div className="contact-details">
                   <h4>Location</h4>
                   <p>Connecticut, USA</p>
@@ -429,16 +471,16 @@ export default function LandingPage() {
             </div>
             <form className="contact-form" id="contactForm">
               <div className="form-group">
-                <input type="text" id="name" name="name" placeholder="Your Name" required />
+                <input type="text" name="name" placeholder="Your Name" required />
               </div>
               <div className="form-group">
-                <input type="email" id="email" name="email" placeholder="Your Email" required />
+                <input type="email" name="email" placeholder="Your Email" required />
               </div>
               <div className="form-group">
-                <input type="text" id="business" name="business" placeholder="Business Name" />
+                <input type="text" name="business" placeholder="Business Name" />
               </div>
               <div className="form-group">
-                <select id="service" name="service">
+                <select name="service">
                   <option value="">Select a Service</option>
                   <option value="website">Website Development</option>
                   <option value="ordering">Online Ordering & POS</option>
@@ -448,7 +490,7 @@ export default function LandingPage() {
                 </select>
               </div>
               <div className="form-group">
-                <textarea id="message" name="message" placeholder="Tell us about your project..." rows="4"></textarea>
+                <textarea name="message" placeholder="Tell us about your project..." rows="4"></textarea>
               </div>
               <button type="submit" className="btn btn-primary btn-full">Send Message</button>
             </form>
@@ -461,7 +503,7 @@ export default function LandingPage() {
         <div className="container">
           <div className="footer-content">
             <div className="footer-brand">
-              <a href="#" className="logo" id="footer-logo-secret">
+              <a href="#home" className="logo" id="footer-logo-secret">
                 <span className="logo-nj">NJ</span>
                 <span className="logo-text">Developments</span>
               </a>
@@ -503,6 +545,6 @@ export default function LandingPage() {
 
       {/* Cursor Glow Effect */}
       <div className="cursor-glow"></div>
-    </>
+    </div>
   );
 }
