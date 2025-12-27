@@ -125,6 +125,7 @@ export default function CRM() {
   const [radius, setRadius] = useState(8047); // 5 miles default
   const [businessType, setBusinessType] = useState('');
   const [searchCenter, setSearchCenter] = useState(null);
+  const [pagination, setPagination] = useState(null);
 
   // Keep leadsRef in sync with leads state
   useEffect(() => { 
