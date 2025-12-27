@@ -71,7 +71,7 @@
   top: 16px; 
   left: 16px; 
   bottom: 16px; 
-  width: 400px; 
+  width: 460px; 
   background: rgba(18,35,61,0.95); 
   backdrop-filter: blur(20px); 
   -webkit-backdrop-filter: blur(20px);
@@ -89,14 +89,14 @@
 .panel-header { 
   display: flex; 
   align-items: center; 
-  gap: 10px; 
-  padding: 14px 18px; 
+  gap: 8px; 
+  padding: 12px 14px; 
   border-bottom: 1px solid var(--border); 
   background: linear-gradient(180deg, rgba(45,74,110,0.3) 0%, rgba(45,74,110,0.1) 100%);
 }
 .toggle-btn { 
-  width: 36px; 
-  height: 36px; 
+  width: 34px; 
+  height: 34px; 
   background: var(--bg-elevated); 
   border: 1px solid var(--border); 
   border-radius: 10px; 
@@ -107,19 +107,20 @@
   transition: all 0.2s;
 }
 .toggle-btn:hover { background: var(--bg-card-hover); color: #fff; }
-.tabs { display: flex; flex: 1; gap: 6px; }
+.tabs { display: flex; flex: 1; gap: 4px; overflow-x: auto; }
+.tabs::-webkit-scrollbar { display: none; }
 .tabs button { 
-  flex: 1; 
-  padding: 10px 14px; 
+  padding: 8px 10px; 
   border: none; 
-  border-radius: 10px; 
+  border-radius: 8px; 
   background: transparent; 
   color: var(--text-muted); 
   cursor: pointer; 
-  font-size: 13px; 
+  font-size: 12px; 
   font-weight: 600; 
   transition: all 0.2s; 
   white-space: nowrap;
+  flex-shrink: 0;
 }
 .tabs button:hover { background: rgba(45,212,191,0.1); color: var(--text-primary); }
 .tabs button.active { 
@@ -127,7 +128,7 @@
   color: var(--bg-dark); 
   box-shadow: 0 4px 12px rgba(45,212,191,0.3);
 }
-.count { background: rgba(255,255,255,0.2); font-size: 11px; padding: 3px 7px; border-radius: 6px; margin-left: 6px; font-weight: 700; }
+.count { background: rgba(255,255,255,0.2); font-size: 10px; padding: 2px 6px; border-radius: 5px; margin-left: 4px; font-weight: 700; }
 
 .panel-body { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 

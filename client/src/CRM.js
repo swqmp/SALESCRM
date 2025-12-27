@@ -163,6 +163,9 @@ export default function CRM() {
   useEffect(() => { pinDropModeRef.current = pinDropMode; }, [pinDropMode]);
   useEffect(() => { radiusRef.current = radius; }, [radius]);
 
+  // Track if update came from Firebase to prevent re-sync
+  const isFirebaseUpdate = useRef(false);
+  
   // Keep leadsRef in sync with leads state and sync changes to Firebase
   const prevLeadsRef = useRef([]);
   useEffect(() => { 
@@ -170,8 +173,8 @@ export default function CRM() {
     localStorage.setItem('leads', JSON.stringify(leads)); 
     updateMarkers();
     
-    // Sync new or updated leads to Firebase
-    if (firebaseConnected && leads.length > 0) {
+    // Only sync to Firebase if this update didn't come from Firebase
+    if (firebaseConnected && leads.length > 0 && !isFirebaseUpdate.current) {
       leads.forEach(lead => {
         const prevLead = prevLeadsRef.current.find(l => l.id === lead.id);
         // If lead is new or updated, sync to Firebase
@@ -180,6 +183,7 @@ export default function CRM() {
         }
       });
     }
+    isFirebaseUpdate.current = false;
     prevLeadsRef.current = leads;
   }, [leads, firebaseConnected]);
 
@@ -218,8 +222,9 @@ export default function CRM() {
   useEffect(() => {
     if (!firebaseConnected) return;
     const unsubscribe = subscribeToLeads((firebaseLeads) => {
+      // Mark this as a Firebase update to prevent re-syncing
+      isFirebaseUpdate.current = true;
       // Firebase is the source of truth - use Firebase leads directly
-      // This ensures all team members see the same data in real-time
       setLeads(firebaseLeads);
     });
     return unsubscribe;
@@ -902,8 +907,8 @@ export default function CRM() {
             <div className="tabs">
               <button className={tab === 'dashboard' ? 'active' : ''} onClick={() => setTab('dashboard')}>📊 Home</button>
               <button className={tab === 'leads' ? 'active' : ''} onClick={() => setTab('leads')}>📋 Leads <span className="count">{filtered.length}</span></button>
-              <button className={tab === 'sheet' ? 'active' : ''} onClick={() => setTab('sheet')}>📑 Team Sheet</button>
-              <button className={tab === 'search' ? 'active' : ''} onClick={() => setTab('search')}>🔍 Search</button>
+              <button className={tab === 'sheet' ? 'active' : ''} onClick={() => setTab('sheet')}>📑 Sheet</button>
+              <button className={tab === 'search' ? 'active' : ''} onClick={() => setTab('search')}>🔍 Find</button>
             </div>
           )}
         </div>
